@@ -1,0 +1,27 @@
+{
+  "name": "youtube",
+  "version": "1.0.0",
+  "description": "youtube backend",
+  "keywords": [
+    "backend"
+  ],
+  "homepage": "https://github.com/hammad-x25/Youtube#readme",
+  "bugs": {
+    "url": "https://github.com/hammad-x25/Youtube/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hammad-x25/Youtube.git"
+  },
+  "license": "ISC",
+  "author": "Hammad Ashfaq",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prettier": "^3.9.6"
+  }
+}
