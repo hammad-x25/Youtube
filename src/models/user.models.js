@@ -48,10 +48,10 @@ const UserSchema = new mongoose.Schema({
 },{timestamps:true});
 
 UserSchema.pre("save",async function (next) {
-     if(!this.isModified("password")) return next();
+     if(!this.isModified("password")) return ;
 
      this.password=bcrypt.hash(this.password,7);
-     next();
+     
 })
 
 UserSchema.methods.generateAccessToken=function()

@@ -1,10 +1,10 @@
-import dotenv from "dotenv"
-import { DBconnect } from "./db/index.js"
-import { app } from "./app.js"
+import dotenv from "dotenv";
+import { DBconnect } from "./db/index.js";
+import { app } from "./app.js";
 
-dotenv.config()
-DBconnect();
-app.listen(8000,()=>{
-  console.log(`app is listening on port 8000`)
-})
-
+dotenv.config();
+DBconnect().then(() => {
+  app.listen(8000, () => {
+    console.log(`app is listening on port 8000`);
+  });
+});

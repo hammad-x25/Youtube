@@ -14,6 +14,7 @@ const uploadhandler = async (localpath) => {
       resource_type: "auto",
     });
     console.log("Image uploaded", response.url);
+    fs.unlinkSync(localpath);
     return response;
   } catch (error) {
     fs.unlinkSync(localpath);
