@@ -5,7 +5,7 @@ export const DBconnect=async()=>
 {
     try {
         const databaseinstance=await mongoose.connect(`${process.env.MONGODB_URL}/${DB_NAME}`)
-        console.log("Database instance created :", databaseinstance)
+        console.log("Database instance created :", databaseinstance.connection.host)
     } catch (error) {
         console.log("Error while database Loading",error);
         process.exit(1);
