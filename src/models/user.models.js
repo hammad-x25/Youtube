@@ -47,12 +47,23 @@ const UserSchema = new mongoose.Schema({
   ]
 },{timestamps:true});
 
-UserSchema.pre("save",async function (next) {
-     if(!this.isModified("password")) return ;
+UserSchema.pre("save", async function(next) {
+    try {
+        if (!this.isModified("password")) {
+            return;
+        }
 
-     this.password=bcrypt.hash(this.password,7);
-     
-})
+        this.password = await bcrypt.hash(this.password, 7);
+
+        
+    } catch (error) {
+        throw (error);
+    }
+});
+
+UserSchema.methods.isPasswordCorrect=async function(password) {
+  return await bcrypt.compare(password,this.password);
+}
 
 UserSchema.methods.generateAccessToken=function()
 {
