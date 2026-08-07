@@ -1,4 +1,5 @@
 import { asyncHandler } from "../utils/asynchandler.js";
+<<<<<<< Updated upstream
 
 const registerUser = asyncHandler(async (req, res) => {
   res.status(200).json({
@@ -7,3 +8,309 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 export {registerUser}
+=======
+import { apierror } from "../utils/apierror.js";
+import { User } from "../models/user.models.js";
+import uploadhandler from "../utils/cloudinary.js";
+import { apiresponse } from "../utils/apiresponse.js";
+import fs from "fs";
+import jwt from "jsonwebtoken";
+
+const generateAccessandrefreshToken = async (user) => {
+  try {
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new apierror(500, "error while genrating tokens", error);
+  }
+};
+
+const registerUser = asyncHandler(async (req, res) => {
+  const avatarlocalpath = req.files?.avatar[0]?.path;
+  const coverImagepath = req.files?.coverImage?.[0]?.path;
+  try {
+    const { fullName, email, username, password } = req.body;
+
+    if (
+      [fullName, email, password, username].some((field) => field.trim() === "")
+    ) {
+      throw new apierror(400, "Incorrect Info Provided");
+    }
+
+    const userexisted = await User.findOne({
+      $or: [{ email }, { username }],
+    });
+
+    if (userexisted) {
+      throw new apierror(400, "User Already Existed");
+    }
+
+    if (!avatarlocalpath) {
+      throw new apierror(400, "Avatar Not uploaded");
+    }
+
+    const avatar = await uploadhandler(avatarlocalpath);
+    let coverImage;
+    if (coverImagepath) {
+      coverImage = await uploadhandler(coverImagepath);
+    }
+
+    if (!avatar) {
+      throw new apierror(500, "Avatar cant be uploaded to Cloudinary");
+    }
+
+    const user = await User.create({
+      fullName,
+      email,
+      username: username.toLowerCase(),
+      avatar: avatar.url,
+      coverImage: coverImage?.url || "",
+      password,
+    });
+
+    const createduser = await User.findById(user._id).select(
+      "-password -refreshToken",
+    );
+
+    if (!createduser) {
+      throw new apierror(500, "Server side error in registering user");
+    }
+
+    return res
+      .status(200)
+      .json(new apiresponse(200, "USER CREATED", createduser));
+  } catch (error) {
+    if (avatarlocalpath) {
+      await fs.promises.unlink(avatarlocalpath).catch(() => {});
+    }
+    if (coverImagepath) {
+      await fs.promises.unlink(coverImagepath).catch(() => {});
+    }
+
+    //we do this because there may be the path not existed so in that case it still catches
+    // the original error not while removing when also unlinksync also pause nodejs while fs.promises
+    //is asynchronous
+    throw error;
+  }
+});
+
+const loginuser = asyncHandler(async (req, res) => {
+  const { email, username, password } = req.body;
+  if (!email && !username) {
+    throw new apierror(400, "Mising Credentials");
+  }
+
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (!user) {
+    throw new apierror(400, "User not found");
+  }
+
+  if (!user.isPasswordCorrect(password)) {
+    throw new apierror(400, "Username or Password Wrong");
+  }
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  const { accessToken, refreshToken } =
+    await generateAccessandrefreshToken(user);
+
+  const safeUser = await User.findById(user._id).select("-password");
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new apiresponse(200, "User Logged In", {
+        safeUser,
+        accessToken,
+        refreshToken,
+      }),
+    );
+});
+
+const logoutuser = asyncHandler(async (req, res) => {
+  const user = req.user;
+  user.refreshToken = "";
+  await user.save({ validateBeforeSave: false });
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiresponse(200, "Log out user", {}));
+});
+
+const refreshaccesstoken = asyncHandler(async (req, res) => {
+  const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
+
+  if (!refreshToken) throw new apierror("400", "NO refresh Token Provided");
+
+  const decodedToken = jwt.verify(
+    refreshToken,
+    process.env.REFRESH_TOKEN_SECRET,
+  );
+
+  console.log(decodedToken);
+  const user = await User.findById(decodedToken._id).select("-password");
+  if (!user) throw new apierror(400, "Refresh Token INvalid or expired");
+  console.log(user.fullName);
+  if (refreshToken != user.refreshToken)
+    throw new apierror(400, "Refresh Token INvalid or expired");
+  const accessToken = await user.generateAccessToken();
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new apiresponse(200, "AccessToken Refreshed", {
+        accessToken,
+        refreshToken,
+      }),
+    );
+});
+
+const updatepassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user._id)
+
+  const isCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isCorrect) throw new apierror(400, "Old password is incorrect");
+
+  user.password = newPassword;
+
+  await user.save();
+
+  const safeUser = await User.findById(user._id)
+    .select("-password -refreshToken");
+
+  return res
+    .status(200)
+    .json(new apiresponse(200, "Password Updated", { safeUser }));
+});
+
+const updateprofile = asyncHandler(async (req, res) => {
+  const { username, fullName } = req.body;
+
+  if (!username || !fullName)
+    throw new apierror(400, "Username or fullname not provided");
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { fullName, username },
+    },
+    {
+      new: true,
+    },
+  ).select("-password -refreshToken");
+
+  return res
+    .status(200)
+    .json(new apiresponse(200, "Profile Updated", { user }));
+});
+
+const getcurrentuser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new apiresponse(200, "Current user returned", req.user));
+});
+
+const updateavatar = asyncHandler(async (req, res) => {
+  const avatarlocalpath = req.file?.path;
+  try {
+    if (!avatarlocalpath) {
+      throw new apierror(400, "Avatar Not uploaded");
+    }
+
+    const avatar = await uploadhandler(avatarlocalpath);
+
+    if (!avatar) throw new apierror(400, "Avatar Not uploaded to cloudinary");
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          avatar: avatar.url,
+        },
+      },
+      {
+        new: true,
+      },
+    ).select("-password -refreshToken");
+
+    return res
+      .status(200)
+      .json(new apiresponse(200, "Avatar photo Updated", user));
+  } catch (error) {
+    if (avatarlocalpath) {
+      await fs.promises.unlink(avatarlocalpath).catch(() => {});
+    }
+    throw error;
+  }
+});
+
+const updatecover = asyncHandler(async (req, res) => {
+  const coverlocalpath = req.file?.path;
+  try {
+    if (!coverlocalpath) {
+      throw new apierror(400, "cover Not uploaded");
+    }
+
+    const cover = await uploadhandler(coverlocalpath);
+
+    if (!cover) throw new apierror(400, "cover Not uploaded to cloudinary");
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          coverImage: cover.url,
+        },
+      },
+      {
+        new: true,
+      },
+    ).select("-password -refreshToken");
+
+    return res
+      .status(200)
+      .json(new apiresponse(200, "Cover photo Updated", user));
+  } catch (error) {
+    if (coverlocalpath) {
+      await fs.promises.unlink(coverlocalpath).catch(() => {});
+    }
+    throw error;
+  }
+});
+
+export {
+  registerUser,
+  loginuser,
+  logoutuser,
+  refreshaccesstoken,
+  updatepassword,
+  updateavatar,
+  updatecover,
+  updateprofile,
+  getcurrentuser,
+};
+>>>>>>> Stashed changes
