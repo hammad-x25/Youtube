@@ -1,14 +1,4 @@
 import { asyncHandler } from "../utils/asynchandler.js";
-<<<<<<< Updated upstream
-
-const registerUser = asyncHandler(async (req, res) => {
-  res.status(200).json({
-    message: "ok",
-  });
-});
-
-export {registerUser}
-=======
 import { apierror } from "../utils/apierror.js";
 import { User } from "../models/user.models.js";
 import uploadhandler from "../utils/cloudinary.js";
@@ -313,4 +303,3 @@ export {
   updateprofile,
   getcurrentuser,
 };
->>>>>>> Stashed changes
