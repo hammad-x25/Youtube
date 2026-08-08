@@ -153,14 +153,15 @@ const refreshaccesstoken = asyncHandler(async (req, res) => {
     process.env.REFRESH_TOKEN_SECRET,
   );
 
-  console.log(decodedToken);
   const user = await User.findById(decodedToken._id).select("-password");
   if (!user) throw new apierror(400, "Refresh Token INvalid or expired");
-  console.log(user.fullName);
+
   if (refreshToken != user.refreshToken)
     throw new apierror(400, "Refresh Token INvalid or expired");
   const accessToken = await user.generateAccessToken();
-
+  const newrefresh=await user.generateRefreshToken();
+  user.refreshToken=newrefresh;
+  await user.save();
   const options = {
     httpOnly: true,
     secure: true,
@@ -168,11 +169,11 @@ const refreshaccesstoken = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("refreshToken", newrefresh, options)
     .json(
       new apiresponse(200, "AccessToken Refreshed", {
         accessToken,
-        refreshToken,
+        newrefresh,
       }),
     );
 });
