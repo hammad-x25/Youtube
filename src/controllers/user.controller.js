@@ -293,6 +293,51 @@ const updatecover = asyncHandler(async (req, res) => {
   }
 });
 
+const getuseraccountdetails = asyncHandler(async (req, res) => {
+  const {username}=req.params;
+  if(!username?.trim()) throw new apierror(400,"Username not provided");
+
+  const channel=await User.aggregate([
+    {
+      $match: { username: username.toLowerCase() },
+    }, 
+    {
+      $lookup:{
+        from:"subscriptions",
+        localField:"_id",
+        foreignField:"channel",
+        as:"subscribers"
+      }
+    }
+    ,{
+      $lookup:{
+      from:"subscriptions",
+      localField:"_id",
+      foreignField:"subscriber",
+      as:"subscribedchannels"
+      } 
+    },
+    {
+      $addFields:{
+        subscriberscount:{$size:"$subscribers"},
+        subscribedchannelscount:{$size:"$subscribedchannels"}
+      }
+    },
+    {
+      $project:{
+        password:0,
+        refreshToken:0,
+      }
+    }
+
+  ])
+
+  if (!channel?.length) {
+    throw new apierror(404, "Channel not found");
+}
+  console.log("Channel", channel);
+});
+
 export {
   registerUser,
   loginuser,
@@ -303,4 +348,5 @@ export {
   updatecover,
   updateprofile,
   getcurrentuser,
+  getuseraccountdetails
 };
