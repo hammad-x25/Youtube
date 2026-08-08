@@ -5,11 +5,11 @@ import {
   logoutuser,
   refreshaccesstoken,
   getcurrentuser,
-  updateavatar,
-  updatecover,
   updatepassword,
   updateprofile,
 } from "../controllers/user.controller.js";
+
+import { updateavatar, updatecover } from "../controllers/deleteold.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -32,10 +32,10 @@ Userrouter.route("/register").post(
 Userrouter.route("/login").post(loginuser);
 Userrouter.route("/logout").post(verifyJWT, logoutuser);
 Userrouter.route("/refreshaccesstoken").post(refreshaccesstoken);
-Userrouter.route("/updateprofile").post(verifyJWT,updateprofile);
-Userrouter.route("/updatepasswrd").post(verifyJWT,updatepassword);
-Userrouter.route("/updateavatar").post(verifyJWT,upload.single("avatar"),updateavatar);
-Userrouter.route("/updatecover").post(verifyJWT,upload.single("coverImage"),updatecover);
-Userrouter.route("/getuser").post(verifyJWT,getcurrentuser);
+Userrouter.route("/updateprofile").patch(verifyJWT,updateprofile);
+Userrouter.route("/updatepasswrd").patch(verifyJWT,updatepassword);
+Userrouter.route("/updateavatar").patch(verifyJWT,upload.single("avatar"),updateavatar);
+Userrouter.route("/updatecover").patch(verifyJWT,upload.single("coverImage"),updatecover);
+Userrouter.route("/getuser").get(verifyJWT,getcurrentuser);
 
 export { Userrouter };

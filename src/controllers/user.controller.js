@@ -1,10 +1,11 @@
 import { asyncHandler } from "../utils/asynchandler.js";
 import { apierror } from "../utils/apierror.js";
 import { User } from "../models/user.models.js";
-import uploadhandler from "../utils/cloudinary.js";
+import {uploadhandler} from "../utils/cloudinary.js";
 import { apiresponse } from "../utils/apiresponse.js";
 import fs from "fs";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessandrefreshToken = async (user) => {
   try {
@@ -226,75 +227,11 @@ const getcurrentuser = asyncHandler(async (req, res) => {
     .json(new apiresponse(200, "Current user returned", req.user));
 });
 
-const updateavatar = asyncHandler(async (req, res) => {
-  const avatarlocalpath = req.file?.path;
-  try {
-    if (!avatarlocalpath) {
-      throw new apierror(400, "Avatar Not uploaded");
-    }
 
-    const avatar = await uploadhandler(avatarlocalpath);
-
-    if (!avatar) throw new apierror(400, "Avatar Not uploaded to cloudinary");
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        $set: {
-          avatar: avatar.url,
-        },
-      },
-      {
-        new: true,
-      },
-    ).select("-password -refreshToken");
-
-    return res
-      .status(200)
-      .json(new apiresponse(200, "Avatar photo Updated", user));
-  } catch (error) {
-    if (avatarlocalpath) {
-      await fs.promises.unlink(avatarlocalpath).catch(() => {});
-    }
-    throw error;
-  }
-});
-
-const updatecover = asyncHandler(async (req, res) => {
-  const coverlocalpath = req.file?.path;
-  try {
-    if (!coverlocalpath) {
-      throw new apierror(400, "cover Not uploaded");
-    }
-
-    const cover = await uploadhandler(coverlocalpath);
-
-    if (!cover) throw new apierror(400, "cover Not uploaded to cloudinary");
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        $set: {
-          coverImage: cover.url,
-        },
-      },
-      {
-        new: true,
-      },
-    ).select("-password -refreshToken");
-
-    return res
-      .status(200)
-      .json(new apiresponse(200, "Cover photo Updated", user));
-  } catch (error) {
-    if (coverlocalpath) {
-      await fs.promises.unlink(coverlocalpath).catch(() => {});
-    }
-    throw error;
-  }
-});
 
 const getuseraccountdetails = asyncHandler(async (req, res) => {
-  const {username}=req.params;
+  const {username}=req.params; 
+   // because we will do /api/user/accountdetails/:username so we can get the username from params
   if(!username?.trim()) throw new apierror(400,"Username not provided");
 
   const channel=await User.aggregate([
@@ -324,6 +261,17 @@ const getuseraccountdetails = asyncHandler(async (req, res) => {
       }
     },
     {
+      $addFields:{
+        issubscribed:{
+          $cond:{
+            if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+            then:true,
+            else:false
+          }
+        }
+      }
+    },
+    {
       $project:{
         password:0,
         refreshToken:0,
@@ -338,15 +286,67 @@ const getuseraccountdetails = asyncHandler(async (req, res) => {
   console.log("Channel", channel);
 });
 
+const getwatchhistory=asyncHandler(async(req,res)=>
+{
+  const watchhistory=User.aggregate(
+    [
+      {
+        $match:{
+          _id:new mongoose.Types.ObjectId(req.user._id)
+        }
+
+      },
+      {
+        $lookup:{
+          from:"videos",
+          localField:"watchHistory",
+          foreignField:"_id",
+          as:"WatchedVideos",
+          pipeline=[
+            {
+              $lookup:{
+                from:"users",
+              localField:"owner",
+              foreignField:"_id",
+              as:"WatchedVideo_Creator",
+              pipeline=[
+                {
+                  $project:
+                  {
+                    username:1,
+                    avatar:1,
+                    fullName:1
+                  }
+                }
+              ]
+            }}
+            ,{
+              $addFields:
+              owner={
+                $first:"$WatchedVideo_Creator"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  )
+
+  return res.status(200)
+  .json(new apiresponse(200,"Watch History Retrieved",watchhistory[0]?.WatchedVideos||[]))
+});
+
+
+
+
 export {
   registerUser,
   loginuser,
   logoutuser,
   refreshaccesstoken,
   updatepassword,
-  updateavatar,
-  updatecover,
   updateprofile,
   getcurrentuser,
-  getuseraccountdetails
+  getuseraccountdetails,
+
 };

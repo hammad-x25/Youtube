@@ -22,4 +22,17 @@ const uploadhandler = async (localpath) => {
   }
 };
 
-export default uploadhandler;
+const deleteFromCloudinary = async (public_id, resourceType = "image") => {
+  try {
+    if (!public_id) return null;
+    const res = await cloudinary.uploader.destroy(public_id, {
+      resource_type: resourceType, 
+    });
+   
+    return res;
+  } catch (error) {
+    return null;
+  }
+};
+
+export { uploadhandler, deleteFromCloudinary };
