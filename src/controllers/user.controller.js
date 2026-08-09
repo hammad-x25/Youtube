@@ -348,5 +348,6 @@ export {
   updateprofile,
   getcurrentuser,
   getuseraccountdetails,
+  getwatchhistory
 
 };
