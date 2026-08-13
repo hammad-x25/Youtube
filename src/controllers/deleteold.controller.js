@@ -77,6 +77,7 @@ const updatecover = asyncHandler(async (req, res) => {
       .json(new apiresponse(200, "Cover photo Updated", user));
   } catch (error) {
     if (coverlocalpath) {
+      
       await fs.promises.unlink(coverlocalpath).catch(() => {});
     }
     throw error;
