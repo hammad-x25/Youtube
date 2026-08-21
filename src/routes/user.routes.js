@@ -21,11 +21,11 @@ Userrouter.route("/register").post(
   upload.fields([
     {
       name: "avatar",
-      maxcount: 1,
+      maxCount: 1,
     },
     {
       name: "coverImage",
-      maxcount: 1,
+      maxCount: 1,
     },
   ]),
   registerUser,
