@@ -7,7 +7,7 @@ const VideoSchema=mongoose.Schema({
         type:String,
         required:true
     },
-    Thumnail:
+    Thumbnail:
     {
             type:String,
             required:true

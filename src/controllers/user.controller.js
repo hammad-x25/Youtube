@@ -68,6 +68,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     if (!createduser) {
       throw new apierror(500, "Server side error in registering user");
+
     }
 
     return res

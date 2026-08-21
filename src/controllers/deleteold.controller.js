@@ -1,5 +1,5 @@
 import {apierror} from "../utils/apierror.js";
-import {asyncHandler} from "../utils/asyncHandler.js";
+import {asyncHandler} from "../utils/asynchandler.js";
 import { User } from "../models/user.models.js";
 import { getPublicIdFromUrl } from "../utils/getidfromurl.js";
 import { apiresponse } from "../utils/apiresponse.js";
