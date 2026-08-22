@@ -13,4 +13,6 @@ videorouter.route("/videos")
     ]),
     createVideo
   );
+
+videorouter.route("/videos/:videoId").get(verifyJWT,)
 export {videorouter};
