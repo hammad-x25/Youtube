@@ -303,14 +303,14 @@ const getwatchhistory=asyncHandler(async(req,res)=>
           localField:"watchHistory",
           foreignField:"_id",
           as:"WatchedVideos",
-          pipeline=[
+          pipeline:[
             {
               $lookup:{
                 from:"users",
               localField:"owner",
               foreignField:"_id",
               as:"WatchedVideo_Creator",
-              pipeline=[
+              pipeline:[
                 {
                   $project:
                   {
@@ -337,7 +337,122 @@ const getwatchhistory=asyncHandler(async(req,res)=>
   .json(new apiresponse(200,"Watch History Retrieved",watchhistory[0]?.WatchedVideos||[]))
 });
 
+const getLikedVideos = asyncHandler(async (req, res) => {
 
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+
+    const page = Math.max(
+        Number.parseInt(req.query.page, 10) || 1,
+        1
+    );
+
+    const limit = Math.min(
+        Math.max(
+            Number.parseInt(req.query.limit, 10) || 20,
+            1
+        ),
+        50
+    );
+
+    const skip = (page - 1) * limit;
+
+    
+    const likedVideos = await Likes.aggregate([
+
+        {
+            $match: {
+                Likedby: userId,
+                Video: {
+                    $exists: true,
+                    $ne: null
+                }
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+
+                localField: "Video",
+                foreignField: "_id",
+
+                as: "video"
+            }
+        },
+
+        {
+            $unwind: "$video"
+        },
+  
+        {
+            $match: {
+                "video.isPublished": true
+            }
+        },
+         {
+            $sort: {
+                createdAt: -1,
+                _id: -1
+            }
+        },
+
+        {
+            $skip: skip
+        },
+
+        {
+            $limit: limit
+        },
+
+        {
+            $lookup: {
+                from: "users",
+
+                localField: "video.owner",
+                foreignField: "_id",
+
+                as: "owner"
+            }
+        },
+
+        {
+            $unwind: "$owner"
+        },
+
+        {
+            $project: {
+                _id: "$video._id",
+                title: "$video.title",
+                Thumbnail: "$video.Thumbnail",
+                duration: "$video.duration",
+                views: "$video.views",
+                createdAt: "$video.createdAt",
+
+                likedAt: "$createdAt",
+
+                owner: {
+                    _id: "$owner._id",
+                    username: "$owner.username",
+                    fullName: "$owner.fullName",
+                    avatar: "$owner.avatar"
+                }
+            }
+        }
+    ]);
+
+    return res
+        .status(200)
+        .json(
+            new apiresponse(
+                200,
+                "Liked videos retrieved successfully",
+                {
+                    page,
+                    limit,
+                    videos: likedVideos
+                }
+            )
+        );
+});
 
 
 export {
@@ -349,7 +464,6 @@ export {
   updateprofile,
   getcurrentuser,
   getuseraccountdetails,
-  getwatchhistory
-
-  
+  getwatchhistory,
+  getLikedVideos
 };

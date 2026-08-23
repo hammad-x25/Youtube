@@ -17,4 +17,8 @@ owner:{
 }
 },{timestamps:true});
 
+commentSchema.index({
+    Videos: 1
+});
+
 export const Comments=mongoose.model("Comments",commentSchema);
