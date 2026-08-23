@@ -10,24 +10,30 @@ import { uploadvideo,
 
 const videorouter= Router();
 
-videorouter.route("/videos")
+videorouter.route("/")
   .post(
     verifyJWT,
     upload.fields([
       { name: "VideoFile", maxCount: 1 },
       { name: "Thumbnail", maxCount: 1 }
     ]),
-    createVideo
+    uploadvideo
   );
 
-videorouter.route("/videos/:videoId").get(getVideoById);
+videorouter.route("/:videoId").get(getVideoById);
+
+//RESOURCE API
+
+
+//Composition API'S
 videorouter.get(
-    "/videos/:videoId/watch",
+    "/:videoId/watch",
     verifyJWT,
     getWatchVideo
 );
+
 videorouter.get(
-    "/videos/:videoId/comments",
+    "/:videoId/comments",
     verifyJWT,
     getVideoComments
 );
