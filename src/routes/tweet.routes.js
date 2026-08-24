@@ -11,42 +11,42 @@ import {
 
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
-const router = Router();
+const tweetRouter = Router();
 
-router.post(
+tweetRouter.post(
     "/",
     verifyJWT,
     createTweet
 );
 
-router.get(
+tweetRouter.get(
     "/feed",
     verifyJWT,
     getFeedTweets
 );
 
-router.get(
+tweetRouter.get(
     "/user/:userId",
     verifyJWT,
     getUserTweets
 );
 
-router.get(
+tweetRouter.get(
     "/:tweetId",
     verifyJWT,
     getTweetById
 );
 
-router.patch(
+tweetRouter.patch(
     "/:tweetId",
     verifyJWT,
     updateTweet
 );
 
-router.delete(
+tweetRouter.delete(
     "/:tweetId",
     verifyJWT,
     deleteTweet
 );
 
-export default router;
+export default tweetRouter;

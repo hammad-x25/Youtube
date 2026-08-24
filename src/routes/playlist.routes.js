@@ -11,22 +11,22 @@ import {
 } from "../controllers/playlist.controller.js";
   
 
-const router = Router();
+const playlistRouter = Router();
 
-router.post("/", verifyJWT, createPlaylist);
+playlistplaylistRouter.post("/", verifyJWT, createPlaylist);
 
-router.post("/:playlistId/videos/:videoId", verifyJWT, addVideoToPlaylist);
-router.delete(
+playlistRouter.post("/:playlistId/videos/:videoId", verifyJWT, addVideoToPlaylist);
+playlistRouter.delete(
   "/:playlistId/videos/:videoId",
   verifyJWT,
   removeVideoFromPlaylist,
 );
 
-router.get("/:playlistId", getPlaylistById);
+playlistRouter.get("/:playlistId", getPlaylistById);
 
-router.get("/", verifyJWT, getUserPlaylists);
+playlistRouter.get("/", verifyJWT, getUserPlaylists);
 
-router.patch("/:playlistId", verifyJWT, updatePlaylist);
+playlistRouter.patch("/:playlistId", verifyJWT, updatePlaylist);
 
-router.delete("/:playlistId", verifyJWT, deletePlaylist);
-export default router;
+playlistRouter.delete("/:playlistId", verifyJWT, deletePlaylist);
+export default playlistRouter;

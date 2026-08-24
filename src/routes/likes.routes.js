@@ -5,23 +5,23 @@ import {
     toggleVideoLike,
     toggleTweetLike
 } from "../controllers/like.controller.js"
-const Likerouter=Router();
+const likeRouter=Router();
 
 
-Likerouter.use(verifyJWT);
+likeRouter.use(verifyJWT);
 
-Likerouter.post(
+likeRouter.post(
     "/likes/tweet/:tweetId",
     toggleTweetLike
 );
 
-Likerouter.post(
+likeRouter.post(
     "/likes/comment/:commentId",
     toggleCommentLike
 );
 
-Likerouter.post(
+likeRouter.post(
     "/likes/video/:videoId",
     toggleVideoLike
 );
-export default router;
+export default likeRouter;

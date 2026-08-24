@@ -1,22 +1,22 @@
 import { Router } from "express";
 import { createComment,deleteComment,updateComment} from "../controllers/comment.controller.js";
-const router =Router();
+const commentRouter =Router();
 
-router.post(
+commentRouter.post(
     "/:videoId",
     verifyJWT,
     createComment
 );
 
-router.patch(
+commentRouter.patch(
     "/:commentId",
     verifyJWT,
     updateComment
 );
 
-router.delete(
+commentRouter.delete(
     "/:commentId",
     verifyJWT,
     deleteComment
 );
-export default router;
+export default commentRouter;

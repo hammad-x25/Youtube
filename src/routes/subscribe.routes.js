@@ -9,16 +9,16 @@ import {
   getSubscriptionStatus,
 } from "../controllers/subscription.controller.js";
 
-const router = Router();
-router.post("/:channelId", verifyJWT, subscribeToChannel);
+const subscriptionRouter = Router();
+subscriptionRouter.post("/:channelId", verifyJWT, subscribeToChannel);
 
-router.delete("/:channelId", verifyJWT, unsubscribeFromChannel);
+subscriptionRouter.delete("/:channelId", verifyJWT, unsubscribeFromChannel);
 
-router.get("/:channelId/subscribers", getChannelSubscribers);
+subscriptionRouter.get("/:channelId/subscribers", getChannelSubscribers);
 
-router.get("/subscribed", verifyJWT, getSubscribedChannels);
+subscriptionRouter.get("/subscribed", verifyJWT, getSubscribedChannels);
 
-router.get("/:channelId/count", getSubscriberCount);
+subscriptionRouter.get("/:channelId/count", getSubscriberCount);
 
-router.get("/:channelId/status", verifyJWT, getSubscriptionStatus);
-export default router;
+subscriptionRouter.get("/:channelId/status", verifyJWT, getSubscriptionStatus);
+export default subscriptionRouter;

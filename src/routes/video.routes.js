@@ -15,35 +15,35 @@ import {
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
-const router = Router();
+const videoRouter = Router();
 
 
-router.get("/", getAllVideos);
+videoRouter.get("/", getAllVideos);
 
-router.get("/:videoId", getVideoById);
+videoRouter.get("/:videoId", getVideoById);
 
 
-router.get(
+videoRouter.get(
     "/:videoId/watch",
     verifyJWT,
     getWatchVideo
 );
 
 
-router.post(
+videoRouter.post(
     "/:videoId/watch-history",
     verifyJWT,
     addToWatchHistory
 );
 
 
-router.get(
+videoRouter.get(
     "/:videoId/comments",
     getVideoComments
 );
 
 
-router.post(
+videoRouter.post(
     "/upload",
     verifyJWT,
     upload.fields([
@@ -59,22 +59,22 @@ router.post(
     uploadvideo
 );
 
-router.patch(
+videoRouter.patch(
     "/:videoId",
     verifyJWT,
     updateVideo
 );
 
-router.delete(
+videoRouter.delete(
     "/:videoId",
     verifyJWT,
     deleteVideo
 );
 
-router.patch(
+videoRouter.patch(
     "/:videoId/publish",
     verifyJWT,
     togglePublishStatus
 );
 
-export default router;
+export default videoRouter;
