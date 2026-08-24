@@ -21,3 +21,4 @@ router.get("/subscribed", verifyJWT, getSubscribedChannels);
 router.get("/:channelId/count", getSubscriberCount);
 
 router.get("/:channelId/status", verifyJWT, getSubscriptionStatus);
+export default router;

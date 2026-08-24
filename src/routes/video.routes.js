@@ -1,40 +1,80 @@
 import { Router } from "express";
-import { upload } from "../middlewares/multer.middleware.js";
+
+import {
+    uploadvideo,
+    getVideoById,
+    getAllVideos,
+    updateVideo,
+    deleteVideo,
+    togglePublishStatus,
+    getWatchVideo,
+    getVideoComments,
+    addToWatchHistory
+} from "../controllers/video.controller.js";
+
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { uploadvideo,
-  getVideoById,
-  getAllVideos,
-  updateVideo,
-  deleteVideo,
-  togglePublishStatus,getWatchVideo,getVideoComments} from "../controllers/video.controller.js" 
+import { upload } from "../middlewares/multer.middleware.js";
 
-const videorouter= Router();
-
-videorouter.route("/")
-  .post(
-    verifyJWT,
-    upload.fields([
-      { name: "VideoFile", maxCount: 1 },
-      { name: "Thumbnail", maxCount: 1 }
-    ]),
-    uploadvideo
-  );
-
-videorouter.route("/:videoId").get(getVideoById);
-
-//RESOURCE API
+const router = Router();
 
 
-//Composition API'S
-videorouter.get(
+router.get("/", getAllVideos);
+
+router.get("/:videoId", getVideoById);
+
+
+router.get(
     "/:videoId/watch",
     verifyJWT,
     getWatchVideo
 );
 
-videorouter.get(
-    "/:videoId/comments",
+
+router.post(
+    "/:videoId/watch-history",
     verifyJWT,
+    addToWatchHistory
+);
+
+
+router.get(
+    "/:videoId/comments",
     getVideoComments
 );
-export {videorouter};
+
+
+router.post(
+    "/upload",
+    verifyJWT,
+    upload.fields([
+        {
+            name: "VideoFile",
+            maxCount: 1
+        },
+        {
+            name: "Thumbnail",
+            maxCount: 1
+        }
+    ]),
+    uploadvideo
+);
+
+router.patch(
+    "/:videoId",
+    verifyJWT,
+    updateVideo
+);
+
+router.delete(
+    "/:videoId",
+    verifyJWT,
+    deleteVideo
+);
+
+router.patch(
+    "/:videoId/publish",
+    verifyJWT,
+    togglePublishStatus
+);
+
+export default router;

@@ -29,3 +29,4 @@ router.get("/", verifyJWT, getUserPlaylists);
 router.patch("/:playlistId", verifyJWT, updatePlaylist);
 
 router.delete("/:playlistId", verifyJWT, deletePlaylist);
+export default router;

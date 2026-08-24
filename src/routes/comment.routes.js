@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { createComment,deleteComment,updateComment} from "../controllers/comment.controller.js";
-import { getVideoComments } from "../controllers/video.controller";
 const router =Router();
 
 router.post(
@@ -20,3 +19,4 @@ router.delete(
     verifyJWT,
     deleteComment
 );
+export default router;

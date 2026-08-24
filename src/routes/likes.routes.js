@@ -24,3 +24,4 @@ Likerouter.post(
     "/likes/video/:videoId",
     toggleVideoLike
 );
+export default router;

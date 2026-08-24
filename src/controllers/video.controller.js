@@ -942,6 +942,66 @@ const getVideoComments = asyncHandler(async (req, res) => {
             )
         );
 });
+const addToWatchHistory = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+
+    if (!mongoose.isValidObjectId(videoId)) {
+        throw new apierror(400, "Invalid video ID");
+    }
+
+    const videoObjectId = new mongoose.Types.ObjectId(videoId);
+    const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+
+    const videoExists = await Video.exists({
+        _id: videoObjectId,
+        isPublished: true
+    });
+
+    if (!videoExists) {
+        throw new apierror(404, "Video not found");
+    }
+
+    await User.findByIdAndUpdate(
+        userObjectId,
+        [
+            {
+                $set: {
+                    WatchHistory: {
+                        $slice: [
+                            {
+                                $concatArrays: [
+                                    {
+                                        $filter: {
+                                            input: "$WatchHistory",
+                                            as: "video",
+                                            cond: {
+                                                $ne: [
+                                                    "$$video",
+                                                    videoObjectId
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    [videoObjectId]
+                                ]
+                            },
+                            -100
+                        ]
+                    }
+                }
+            }
+        ]
+    );
+
+    return res
+        .status(200)
+        .json(
+            new apiresponse(
+                200,
+                "Video added to watch history"
+            )
+        );
+});
 export {
   uploadvideo,
   getVideoById,
@@ -950,5 +1010,6 @@ export {
   deleteVideo,
   togglePublishStatus,
   getWatchVideo,
-  getVideoComments
+  getVideoComments,
+  addToWatchHistory
 };
