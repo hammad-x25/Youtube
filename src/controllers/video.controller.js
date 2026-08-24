@@ -1,10 +1,10 @@
 import { asyncHandler } from "../utils/asynchandler.js";
 import { apierror } from "../utils/apierror.js";
 import { Video } from "../models/video.models.js";
+import {User} from "../models/user.models.js";
 import { Playlist } from "../models/playlist.models.js";
 import { Comments } from "../models/comment.models.js";
 import { Likes } from "../models/like.models.js";
-
 import { deleteFromCloudinary, uploadhandler } from "../utils/cloudinary.js";
 import { apiresponse } from "../utils/apiresponse.js";
 import fs from "fs";
@@ -297,69 +297,177 @@ const updateVideo = asyncHandler(async (req, res) => {
   }
 });
 const deleteVideo = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
+    const { videoId } = req.params;
 
-  if (!mongoose.isValidObjectId(videoId)) {
-    throw new apierror(400, "Invalid video ID");
-  }
+    if (!mongoose.isValidObjectId(videoId)) {
+        throw new apierror(400, "Invalid video ID");
+    }
 
-  const video = await Video.findById(videoId);
+    const session = await mongoose.startSession();
 
-  if (!video) {
-    throw new apierror(404, "Video not found");
-  }
+    let videoPublicId;
+    let thumbnailPublicId;
+    let deletedVideo;
 
-  if (video.owner.toString() !== req.user._id.toString()) {
-    throw new apierror(403, "You are not allowed to delete this video");
-  }
+    try {
+        session.startTransaction();
 
-  const videoPublicId = getPublicIdFromUrl(video.VideoFile);
-  const thumbnailPublicId = getPublicIdFromUrl(video.Thumbnail);
+        const video = await Video.findOne({
+            _id: videoId,
+            owner: req.user._id
+        }).session(session);
 
-  const deletedVideo = await Video.findByIdAndDelete(videoId);
+        if (!video) {
+            throw new apierror(
+                404,
+                "Video not found or you are not allowed to delete this video"
+            );
+        }
 
-  if (!deletedVideo) {
-    throw new apierror(500, "Video could not be deleted");
-  }
+        videoPublicId = getPublicIdFromUrl(video.VideoFile);
+        thumbnailPublicId = getPublicIdFromUrl(video.Thumbnail);
 
-  const comments = await Comments.find({
-    Videos: videoId,
-  }).select("_id");
+        const comments = await Comments
+            .find({
+                Videos: video._id
+            })
+            .select("_id")
+            .session(session);
 
-  const commentIds = comments.map((comment) => comment._id);
+        const commentIds = comments.map(
+            (comment) => comment._id
+        );
 
-  if (commentIds.length > 0) {
-    await Likes.deleteMany({
-      comment: { $in: commentIds },
-    });
-  }
+        
+        if (commentIds.length > 0) {
+            await Likes.deleteMany(
+                {
+                    comment: {
+                        $in: commentIds
+                    }
+                },
+                {
+                    session
+                }
+            );
+        }
 
-  await Likes.deleteMany({
-    Video: videoId,
-  });
+        
+        await Likes.deleteMany(
+            {
+                Video: video._id
+            },
+            {
+                session
+            }
+        );
 
-  await Comments.deleteMany({
-    Videos: videoId,
-  });
+       
+        await Comments.deleteMany(
+            {
+                Videos: video._id
+            },
+            {
+                session
+            }
+        );
 
-  await Playlist.updateMany(
-    { Videos: videoId },
-    { $pull: { Videos: videoId } },
-  );
-  await User.updateMany(
-    { WatchHistory: videoId },
-    { $pull: { WatchHistory: videoId } },
-  );
-  await deleteFromCloudinary(videoPublicId, "Video").catch((error) => {
-    console.error("Failed to delete video from Cloudinary:", error);
-  });
+        
+        await Playlist.updateMany(
+            {
+                Videos: video._id
+            },
+            {
+                $pull: {
+                    Videos: video._id
+                }
+            },
+            {
+                session
+            }
+        );
 
-  await deleteFromCloudinary(thumbnailPublicId, "Image").catch((error) => {
-    console.error("Failed to delete thumbnail from Cloudinary:", error);
-  });
-  return res
-    .status(200)
-    .json(new apiresponse(200, "Video deleted successfully", deletedVideo));
+        
+        await User.updateMany(
+            {
+                WatchHistory: video._id
+            },
+            {
+                $pull: {
+                    WatchHistory: video._id
+                }
+            },
+            {
+                session
+            }
+        );
+
+        
+        deletedVideo = await Video.findOneAndDelete(
+            {
+                _id: video._id,
+                owner: req.user._id
+            },
+            {
+                session
+            }
+        );
+
+        if (!deletedVideo) {
+            throw new apierror(
+                500,
+                "Video could not be deleted"
+            );
+        }
+
+        await session.commitTransaction();
+
+    } catch (error) {
+
+        
+        await session.abortTransaction();
+
+        throw error;
+
+    } finally {
+
+        await session.endSession();
+    }
+
+    
+    try {
+        await deleteFromCloudinary(
+            videoPublicId,
+            "Video"
+        );
+    } catch (error) {
+        console.error(
+            "Failed to delete video from Cloudinary:",
+            error
+        );
+    }
+
+    try {
+        await deleteFromCloudinary(
+            thumbnailPublicId,
+            "Image"
+        );
+    } catch (error) {
+        console.error(
+            "Failed to delete thumbnail from Cloudinary:",
+            error
+        );
+    }
+
+    return res
+        .status(200)
+        .json(
+            new apiresponse(
+                200,
+                "Video deleted successfully",
+                deletedVideo
+            )
+        );
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {

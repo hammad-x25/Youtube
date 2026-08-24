@@ -8,7 +8,9 @@ content:{
 },
 owner:{
     type:Schema.Types.ObjectId,
-    ref:"User"
+    ref:"User",
+    required: true,
+     index:true
 }
 },{timestamps:true});
 
