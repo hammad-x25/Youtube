@@ -29,15 +29,6 @@ const createComment = asyncHandler(async (req, res) => {
     throw new apierror(404, "Video not found");
   }
 
-  const existingComment = await Comments.exists({
-    owner: req.user._id,
-    Videos: videoId,
-  });
-
-  if (existingComment) {
-    throw new apierror(409, "You have already commented on this video");
-  }
-
   const comment = await Comments.create({
     content: cleanContent,
     Videos: videoId,

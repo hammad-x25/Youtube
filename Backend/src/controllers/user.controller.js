@@ -1,11 +1,12 @@
 import { asyncHandler } from "../utils/asynchandler.js";
 import { apierror } from "../utils/apierror.js";
 import { User } from "../models/user.models.js";
-import {uploadhandler} from "../utils/cloudinary.js";
+import { uploadhandler, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { apiresponse } from "../utils/apiresponse.js";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { Likes } from "../models/like.models.js";
 
 const generateAccessandrefreshToken = async (user) => {
   try {
@@ -20,19 +21,26 @@ const generateAccessandrefreshToken = async (user) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const avatarlocalpath = req.files?.avatar[0]?.path;
+  const avatarlocalpath = req.files?.avatar?.[0]?.path;
   const coverImagepath = req.files?.coverImage?.[0]?.path;
+  let avatar;
+  let coverImage;
   try {
-    const { fullName, email, username, password } = req.body;
+    const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : req.body.fullName;
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : req.body.email;
+    const username = typeof req.body.username === "string" ? req.body.username.trim().toLowerCase() : req.body.username;
+    const { password } = req.body;
 
     if (
-      [fullName, email, password, username].some((field) => field.trim() === "")
+      [fullName, email, password, username].some(
+        (field) => typeof field !== "string" || field.trim() === "",
+      )
     ) {
       throw new apierror(400, "Incorrect Info Provided");
     }
 
     const userexisted = await User.findOne({
-      $or: [{ email }, { username }],
+        $or: [{ email }, { username }],
     });
 
     if (userexisted) {
@@ -43,30 +51,47 @@ const registerUser = asyncHandler(async (req, res) => {
       throw new apierror(400, "Avatar Not uploaded");
     }
 
-    const avatar = await uploadhandler(avatarlocalpath);
-    let coverImage;
-    if (coverImagepath) {
-      coverImage = await uploadhandler(coverImagepath);
-    }
+    avatar = await uploadhandler(avatarlocalpath, { resourceType: "image" });
 
     if (!avatar) {
-      throw new apierror(500, "Avatar cant be uploaded to Cloudinary");
+      throw new apierror(503, "Avatar upload did not return a Cloudinary asset");
     }
 
-    const user = await User.create({
+    if (coverImagepath) {
+      try {
+        coverImage = await uploadhandler(coverImagepath, { resourceType: "image" });
+      } catch (error) {
+        if (avatar.public_id) {
+          await deleteFromCloudinary(avatar.public_id, "image");
+        }
+        throw error;
+      }
+    }
+
+    let user;
+    try {
+      user = await User.create({
       fullName,
       email,
-      username: username.toLowerCase(),
-      avatar: avatar.url,
-      coverImage: coverImage?.url || "",
+      username,
+      avatar: avatar.secure_url || avatar.url,
+      coverImage: coverImage?.secure_url || coverImage?.url || "",
       password,
-    });
+      });
+    } catch (error) {
+      if (coverImage?.public_id) await deleteFromCloudinary(coverImage.public_id, "image");
+      if (avatar?.public_id) await deleteFromCloudinary(avatar.public_id, "image");
+      throw error;
+    }
 
     const createduser = await User.findById(user._id).select(
       "-password -refreshToken",
     );
 
     if (!createduser) {
+      if (user?._id) await User.findByIdAndDelete(user._id);
+      if (coverImage?.public_id) await deleteFromCloudinary(coverImage.public_id, "image");
+      if (avatar?.public_id) await deleteFromCloudinary(avatar.public_id, "image");
       throw new apierror(500, "Server side error in registering user");
 
     }
@@ -103,19 +128,21 @@ const loginuser = asyncHandler(async (req, res) => {
     throw new apierror(400, "User not found");
   }
 
-  if (!user.isPasswordCorrect(password)) {
+  if (!password || !(await user.isPasswordCorrect(password))) {
     throw new apierror(400, "Username or Password Wrong");
   }
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
   };
 
   const { accessToken, refreshToken } =
     await generateAccessandrefreshToken(user);
 
-  const safeUser = await User.findById(user._id).select("-password");
+  const safeUser = await User.findById(user._id).select("-password -refreshToken -WatchHistory");
 
   return res
     .status(200)
@@ -124,8 +151,6 @@ const loginuser = asyncHandler(async (req, res) => {
     .json(
       new apiresponse(200, "User Logged In", {
         safeUser,
-        accessToken,
-        refreshToken,
       }),
     );
 });
@@ -136,7 +161,9 @@ const logoutuser = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
   };
   return res
     .status(200)
@@ -146,16 +173,16 @@ const logoutuser = asyncHandler(async (req, res) => {
 });
 
 const refreshaccesstoken = asyncHandler(async (req, res) => {
-  const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
+  const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
 
-  if (!refreshToken) throw new apierror("400", "NO refresh Token Provided");
+  if (!refreshToken) throw new apierror(400, "No refresh token provided");
 
   const decodedToken = jwt.verify(
     refreshToken,
     process.env.REFRESH_TOKEN_SECRET,
   );
 
-  const user = await User.findById(decodedToken._id).select("-password");
+  const user = await User.findById(decodedToken._id).select("-password -refreshToken -WatchHistory");
   if (!user) throw new apierror(400, "Refresh Token INvalid or expired");
 
   if (refreshToken != user.refreshToken)
@@ -166,7 +193,9 @@ const refreshaccesstoken = asyncHandler(async (req, res) => {
   await user.save();
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
   };
   return res
     .status(200)
@@ -174,8 +203,6 @@ const refreshaccesstoken = asyncHandler(async (req, res) => {
     .cookie("refreshToken", newrefresh, options)
     .json(
       new apiresponse(200, "AccessToken Refreshed", {
-        accessToken,
-        newrefresh,
       }),
     );
 });
@@ -213,9 +240,9 @@ const updateprofile = asyncHandler(async (req, res) => {
       $set: { fullName, username },
     },
     {
-      new: true,
+      returnDocument: "after",
     },
-  ).select("-password -refreshToken");
+  ).select("-password -refreshToken -WatchHistory");
 
   return res
     .status(200)
@@ -235,6 +262,7 @@ const getuseraccountdetails = asyncHandler(async (req, res) => {
    // because we will do /api/user/accountdetails/:username so we can get the username from params
   if(!username?.trim()) throw new apierror(400,"Username not provided");
 
+  const currentUserId = req.user?._id || null;
   const channel=await User.aggregate([
     {
       $match: { username: username.toLowerCase() },
@@ -265,7 +293,7 @@ const getuseraccountdetails = asyncHandler(async (req, res) => {
       $addFields:{
         issubscribed:{
           $cond:{
-            if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+            if:{$in:[currentUserId,"$subscribers.subscriber"]},
             then:true,
             else:false
           }
@@ -274,8 +302,14 @@ const getuseraccountdetails = asyncHandler(async (req, res) => {
     },
     {
       $project:{
-        password:0,
-        refreshToken:0,
+        _id: 1,
+        username: 1,
+        fullName: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscriberscount: 1,
+        subscribedchannelscount: 1,
+        issubscribed: 1,
       }
     }
 
@@ -284,12 +318,12 @@ const getuseraccountdetails = asyncHandler(async (req, res) => {
   if (!channel?.length) {
     throw new apierror(404, "Channel not found");
 }
-  console.log("Channel", channel);
+  return res.status(200).json(new apiresponse(200, "Channel details retrieved", channel[0]));
 });
 
 const getwatchhistory=asyncHandler(async(req,res)=>
 {
-  const watchhistory=User.aggregate(
+  const watchhistory=await User.aggregate(
     [
       {
         $match:{
@@ -322,9 +356,10 @@ const getwatchhistory=asyncHandler(async(req,res)=>
               ]
             }}
             ,{
-              $addFields:
-              owner={
-                $first:"$WatchedVideo_Creator"
+              $addFields: {
+                owner: {
+                  $first:"$WatchedVideo_Creator"
+                }
               }
             }
           ]

@@ -30,7 +30,7 @@ const LikeSchema = new mongoose.Schema(
 
 
 // Exactly ONE target must exist
-LikeSchema.pre("validate", function (next) {
+LikeSchema.pre("validate", function () {
     const targets = [
         this.Video,
         this.comment,
@@ -38,35 +38,40 @@ LikeSchema.pre("validate", function (next) {
     ].filter(Boolean);
 
     if (targets.length !== 1) {
-        return next(
-            new Error(
-                "A like must belong to exactly one video, comment, or tweet"
-            )
+        throw new Error(
+            "A like must belong to exactly one video, comment, or tweet"
         );
     }
-
-    next();
 });
 
 
 // One user can like a particular video only once
 LikeSchema.index(
     { Likedby: 1, Video: 1 },
-    { unique: true, sparse: true }
+    {
+        unique: true,
+        partialFilterExpression: { Video: { $exists: true } },
+    }
 );
 
 
 // One user can like a particular comment only once
 LikeSchema.index(
     { Likedby: 1, comment: 1 },
-    { unique: true, sparse: true }
+    {
+        unique: true,
+        partialFilterExpression: { comment: { $exists: true } },
+    }
 );
 
 
 // One user can like a particular tweet only once
 LikeSchema.index(
     { Likedby: 1, tweet: 1 },
-    { unique: true, sparse: true }
+    {
+        unique: true,
+        partialFilterExpression: { tweet: { $exists: true } },
+    }
 );
 LikeSchema.index({
     Video: 1

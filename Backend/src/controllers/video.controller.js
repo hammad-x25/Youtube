@@ -10,6 +10,8 @@ import { apiresponse } from "../utils/apiresponse.js";
 import fs from "fs";
 import { getPublicIdFromUrl } from "../utils/getidfromurl.js";
 import mongoose from "mongoose";
+import { VideoView } from "../models/video-view.models.js";
+import { Subscription } from "../models/subscription.models.js";
 
 const uploadvideo = asyncHandler(async (req, res) => {
   let thumbnailPath = req.files?.Thumbnail?.[0]?.path;
@@ -35,18 +37,18 @@ const uploadvideo = asyncHandler(async (req, res) => {
       throw new apierror(400, "Video and thumbnail are required");
     }
 
-    const video = await uploadhandler(videoPath);
+    const video = await uploadhandler(videoPath, { resourceType: "video" });
 
     if (!video) {
       throw new apierror(503, "Failed to upload video");
     }
 
-    const thumbnail = await uploadhandler(thumbnailPath);
+    const thumbnail = await uploadhandler(thumbnailPath, { resourceType: "image" });
 
     if (!thumbnail) {
       const publicId = getPublicIdFromUrl(video.url);
 
-      await deleteFromCloudinary(publicId, "Video");
+      await deleteFromCloudinary(publicId, "video");
 
       throw new apierror(503, "Failed to upload thumbnail");
     }
@@ -88,28 +90,84 @@ const getVideoById = asyncHandler(async (req, res) => {
     throw new apierror(400, "Invalid video ID");
   }
 
-  const video = await Video.findOneAndUpdate(
+  const video = await Video.findOne(
     {
       _id: videoId,
       isPublished: true,
     },
-    {
-      $inc: {
-        views: 1,
-      },
-    },
-    {
-      new: true,
-    },
-  ).populate("owner", "username fullName avatar");
+  ).populate("owner", "username fullName avatar").lean();
 
   if (!video) {
     throw new apierror(404, "Video not found");
   }
 
+  const [likeCount, commentsCount, subscribersCount] = await Promise.all([
+    Likes.countDocuments({ Video: video._id }),
+    Comments.countDocuments({ Videos: video._id }),
+    Subscription.countDocuments({ channel: video.owner._id }),
+  ]);
+
+  const liked = req.user?._id
+    ? Boolean(await Likes.exists({ Likedby: req.user._id, Video: video._id }))
+    : false;
+  const subscribed = req.user?._id
+    ? Boolean(await Subscription.exists({ channel: video.owner._id, subscriber: req.user._id }))
+    : false;
+
   return res
     .status(200)
-    .json(new apiresponse(200, "Video successfully retrieved", video));
+    .json(new apiresponse(200, "Video successfully retrieved", {
+      ...video,
+      likeCount,
+      commentsCount,
+      subscribersCount,
+      liked,
+      subscribed,
+    }));
+});
+
+const recordVideoView = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new apierror(400, "Invalid video ID");
+  }
+
+  const video = await Video.exists({ _id: videoId, isPublished: true });
+  if (!video) throw new apierror(404, "Video not found");
+
+  const providedViewKey = req.header("X-View-Key")?.trim();
+  const viewKey = providedViewKey && providedViewKey.length <= 128
+    ? providedViewKey
+    : new mongoose.Types.ObjectId().toString();
+
+  try {
+    await VideoView.create({
+      video: videoId,
+      viewer: req.user?._id,
+      viewKey,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      const current = await Video.findById(videoId).select("views").lean();
+      return res.status(200).json(new apiresponse(200, "View already recorded", {
+        counted: false,
+        views: current?.views || 0,
+      }));
+    }
+    throw error;
+  }
+
+  const updatedVideo = await Video.findByIdAndUpdate(
+    videoId,
+    { $inc: { views: 1 } },
+    { returnDocument: "after", projection: { views: 1 } },
+  ).lean();
+
+  return res.status(200).json(new apiresponse(200, "View recorded", {
+    counted: true,
+    views: updatedVideo?.views || 0,
+  }));
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -249,7 +307,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
 
     if (thumbnailPath) {
-      newThumbnail = await uploadhandler(thumbnailPath);
+      newThumbnail = await uploadhandler(thumbnailPath, { resourceType: "image" });
 
       if (!newThumbnail) {
         throw new apierror(500, "Thumbnail upload failed");
@@ -264,7 +322,7 @@ const updateVideo = asyncHandler(async (req, res) => {
         $set: updateData,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       },
     );
@@ -273,7 +331,7 @@ const updateVideo = asyncHandler(async (req, res) => {
       if (newThumbnail?.url) {
         const newPublicId = getPublicIdFromUrl(newThumbnail.url);
 
-        await deleteFromCloudinary(newPublicId, "Image").catch(() => {});
+        await deleteFromCloudinary(newPublicId, "image").catch(() => {});
       }
 
       throw new apierror(500, "Video could not be updated");
@@ -282,7 +340,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     if (newThumbnail) {
       const oldPublicId = getPublicIdFromUrl(video.Thumbnail);
 
-      await deleteFromCloudinary(oldPublicId, "Image").catch(() => {});
+      await deleteFromCloudinary(oldPublicId, "image").catch(() => {});
     }
 
     return res
@@ -402,6 +460,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
             }
         );
 
+        await VideoView.deleteMany(
+            { video: video._id },
+            { session }
+        );
+
         
         deletedVideo = await Video.findOneAndDelete(
             {
@@ -438,7 +501,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     try {
         await deleteFromCloudinary(
             videoPublicId,
-            "Video"
+            "video"
         );
     } catch (error) {
         console.error(
@@ -450,7 +513,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     try {
         await deleteFromCloudinary(
             thumbnailPublicId,
-            "Image"
+            "image"
         );
     } catch (error) {
         console.error(
@@ -763,7 +826,9 @@ const getVideoComments = asyncHandler(async (req, res) => {
     }
 
     const videoObjectId = new mongoose.Types.ObjectId(videoId);
-    const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+    const userObjectId = req.user?._id
+        ? new mongoose.Types.ObjectId(req.user._id)
+        : null;
 
 
     const page = Math.max(
@@ -1011,5 +1076,6 @@ export {
   togglePublishStatus,
   getWatchVideo,
   getVideoComments,
-  addToWatchHistory
+  addToWatchHistory,
+  recordVideoView
 };

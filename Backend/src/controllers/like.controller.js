@@ -7,6 +7,36 @@ import {Tweets} from "../models/tweets.models.js";
 import { apiresponse } from "../utils/apiresponse.js";
 import mongoose from "mongoose";
 
+const getLikeCount = async (targetField, targetId) =>
+    Likes.countDocuments({ [targetField]: targetId });
+
+const createLikeOrResolveRace = async (targetField, targetId, userId) => {
+    try {
+        await Likes.create({
+            Likedby: userId,
+            [targetField]: targetId,
+        });
+        return true;
+    } catch (error) {
+        // Two fast clicks can both pass the initial findOne. The unique
+        // index correctly keeps one document; the second request should
+        // observe the resulting liked state instead of surfacing a false
+        // "already liked" error to the user.
+        if (error.code !== 11000) throw error;
+
+        return Boolean(await Likes.exists({
+            Likedby: userId,
+            [targetField]: targetId,
+        }));
+    }
+};
+
+const likeResponse = async (res, status, message, targetField, targetId, liked) =>
+    res.status(status).json(new apiresponse(status, message, {
+        liked,
+        likeCount: await getLikeCount(targetField, targetId),
+    }));
+
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
 
@@ -34,49 +64,11 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
 
         await Likes.findByIdAndDelete(existingLike._id);
 
-        return res
-            .status(200)
-            .json(
-                new apiresponse(
-                    200,
-                    "Video unliked successfully",
-                    {
-                        liked: false
-                    }
-                )
-            );
+        return likeResponse(res, 200, "Video unliked successfully", "Video", videoId, false);
     }
 
-    try {
-
-        await Likes.create({
-            Likedby: req.user._id,
-            Video: videoId
-        });
-
-    } catch (error) {
-
-        if (error.code === 11000) {
-            throw new apierror(
-                409,
-                "Video is already liked"
-            );
-        }
-
-        throw error;
-    }
-
-    return res
-        .status(200)
-        .json(
-            new apiresponse(
-                200,
-                "Video liked successfully",
-                {
-                    liked: true
-                }
-            )
-        );
+    const liked = await createLikeOrResolveRace("Video", videoId, req.user._id);
+    return likeResponse(res, 200, "Video liked successfully", "Video", videoId, liked);
 });
 
 
@@ -113,49 +105,11 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 
         await Likes.findByIdAndDelete(existingLike._id);
 
-        return res
-            .status(200)
-            .json(
-                new apiresponse(
-                    200,
-                    "Comment unliked successfully",
-                    {
-                        liked: false
-                    }
-                )
-            );
+        return likeResponse(res, 200, "Comment unliked successfully", "comment", commentId, false);
     }
 
-    try {
-
-        await Likes.create({
-            Likedby: req.user._id,
-            comment: commentId
-        });
-
-    } catch (error) {
-
-        if (error.code === 11000) {
-            throw new apierror(
-                409,
-                "Comment is already liked"
-            );
-        }
-
-        throw error;
-    }
-
-    return res
-        .status(200)
-        .json(
-            new apiresponse(
-                200,
-                "Comment liked successfully",
-                {
-                    liked: true
-                }
-            )
-        );
+    const liked = await createLikeOrResolveRace("comment", commentId, req.user._id);
+    return likeResponse(res, 200, "Comment liked successfully", "comment", commentId, liked);
 });
 
 
@@ -181,48 +135,11 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     if (existingLike) {
         await Likes.findByIdAndDelete(existingLike._id);
 
-        return res
-            .status(200)
-            .json(
-                new apiresponse(
-                    200,
-                    "Tweet unliked successfully",
-                    {
-                        liked: false
-                    }
-                )
-            );
+        return likeResponse(res, 200, "Tweet unliked successfully", "tweet", tweetId, false);
     }
 
-    try {
-        await Likes.create({
-            Likedby: req.user._id,
-            tweet: tweetId
-        });
-
-    } catch (error) {
-
-        if (error.code === 11000) {
-            throw new apierror(
-                409,
-                "Tweet is already liked"
-            );
-        }
-
-        throw error;
-    }
-
-    return res
-        .status(200)
-        .json(
-            new apiresponse(
-                200,
-                "Tweet liked successfully",
-                {
-                    liked: true
-                }
-            )
-        );
+    const liked = await createLikeOrResolveRace("tweet", tweetId, req.user._id);
+    return likeResponse(res, 200, "Tweet liked successfully", "tweet", tweetId, liked);
 });
 
 

@@ -13,11 +13,11 @@ const updateavatar = asyncHandler(async (req, res) => {
       throw new apierror(400, "Avatar Not uploaded");
     }
 
-    const avatar = await uploadhandler(avatarlocalpath);
+    const avatar = await uploadhandler(avatarlocalpath, { resourceType: "image" });
 
     if (!avatar) throw new apierror(400, "Avatar Not uploaded to cloudinary");
 
-    const user=await User.findById(req.user._id).select("-password -refreshToken");
+    const user=await User.findById(req.user._id).select("-password -refreshToken -WatchHistory");
     if (!user) {
             throw new apierror(404, "User not found");
         }
@@ -52,11 +52,11 @@ const updatecover = asyncHandler(async (req, res) => {
       throw new apierror(400, "cover Not uploaded");
     }
 
-    const cover = await uploadhandler(coverlocalpath);
+    const cover = await uploadhandler(coverlocalpath, { resourceType: "image" });
 
     if (!cover) throw new apierror(400, "cover Not uploaded to cloudinary");
 
-    const user=await User.findById(req.user._id).select("-password -refreshToken");
+    const user=await User.findById(req.user._id).select("-password -refreshToken -WatchHistory");
     if (!user) {
             throw new apierror(404, "User not found");
         }

@@ -1,0 +1,15 @@
+import { useState } from "react";
+import { apiRequest } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+
+export default function SettingsPage() {
+  const { user, setUser } = useAuth();
+  const [profile, setProfile] = useState({ username: user.username || "", fullName: user.fullName || "" });
+  const [password, setPassword] = useState({ oldPassword: "", newPassword: "" });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  async function updateProfile(event) { event.preventDefault(); try { const data = await apiRequest("/users/updateprofile", { method: "PATCH", body: profile }); setUser(data.user); setMessage("Profile updated"); } catch (err) { setError(err.message); } }
+  async function updatePassword(event) { event.preventDefault(); try { await apiRequest("/users/updatepasswrd", { method: "PATCH", body: password }); setPassword({ oldPassword: "", newPassword: "" }); setMessage("Password updated"); } catch (err) { setError(err.message); } }
+  async function upload(field, file) { if (!file) return; const body = new FormData(); body.append(field, file); try { const data = await apiRequest(`/users/${field === "avatar" ? "updateavatar" : "updatecover"}`, { method: "PATCH", body }); setUser(data); setMessage(`${field} updated`); } catch (err) { setError(err.message); } }
+  return <div className="settings-page"><div className="section-heading"><div><p className="eyebrow">Account</p><h1>Settings</h1><p className="muted">Keep your profile and security details current.</p></div></div>{(message || error) && <p className={error ? "error-text" : "success-text"}>{error || message}</p>}<div className="settings-grid"><form className="panel settings-card" onSubmit={updateProfile}><p className="eyebrow">Profile</p><h2>Public identity</h2><label>Full name<input value={profile.fullName} onChange={(event) => setProfile({ ...profile, fullName: event.target.value })} required /></label><label>Username<input value={profile.username} onChange={(event) => setProfile({ ...profile, username: event.target.value })} required /></label><button className="button button-primary">Save profile</button></form><form className="panel settings-card" onSubmit={updatePassword}><p className="eyebrow">Security</p><h2>Change password</h2><label>Current password<input type="password" value={password.oldPassword} onChange={(event) => setPassword({ ...password, oldPassword: event.target.value })} required /></label><label>New password<input type="password" minLength="8" value={password.newPassword} onChange={(event) => setPassword({ ...password, newPassword: event.target.value })} required /></label><button className="button button-primary">Update password</button></form><div className="panel settings-card"><p className="eyebrow">Appearance</p><h2>Profile images</h2><label>Avatar<input type="file" accept="image/*" onChange={(event) => upload("avatar", event.target.files?.[0])} /></label><label>Cover image<input type="file" accept="image/*" onChange={(event) => upload("coverImage", event.target.files?.[0])} /></label></div></div></div>;
+}

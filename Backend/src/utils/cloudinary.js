@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import { apierror } from "./apierror.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -7,18 +8,25 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_SECRET_KEY,
 });
 
-const uploadhandler = async (localpath) => {
+const uploadhandler = async (localpath, { resourceType = "auto" } = {}) => {
   if (!localpath) return null;
   try {
     const response = await cloudinary.uploader.upload(localpath, {
-      resource_type: "auto",
+      resource_type: resourceType,
     });
-    console.log("Image uploaded", response.url);
-    fs.unlinkSync(localpath);
+    await fs.promises.unlink(localpath).catch(() => {});
     return response;
   } catch (error) {
-    fs.unlinkSync(localpath);
-    return null;
+    await fs.promises.unlink(localpath).catch(() => {});
+    console.error("Cloudinary upload failed:", {
+      code: error.http_code || error.code || "UNKNOWN",
+      message: error.message,
+    });
+    throw new apierror(
+      503,
+      "Cloudinary upload failed. Check the server configuration and file format.",
+      [{ code: error.http_code || error.code || "CLOUDINARY_UPLOAD_FAILED" }],
+    );
   }
 };
 

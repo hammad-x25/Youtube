@@ -3,6 +3,7 @@ import { apierror } from "../utils/apierror.js";
 import { Likes } from "../models/like.models.js";
 import { User } from "../models/user.models.js";
 import { Tweets } from "../models/tweets.models.js";
+import { Subscription } from "../models/subscription.models.js";
 import { apiresponse } from "../utils/apiresponse.js";
 import mongoose from "mongoose";
 
@@ -168,7 +169,7 @@ const getTweetById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Tweet retrieved successfully", tweet[0]));
+    .json(new apiresponse(200, "Tweet retrieved successfully", tweet[0]));
 });
 const getUserTweets = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -349,7 +350,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
   const totalPages = Math.ceil(totalTweets / limit);
 
   return res.status(200).json(
-    new ApiResponse(200, "User tweets retrieved successfully", {
+    new apiresponse(200, "User tweets retrieved successfully", {
       tweets: result,
 
       pagination: {
@@ -371,6 +372,7 @@ const getFeedTweets = asyncHandler(async (req, res) => {
 
   const currentUserId = new mongoose.Types.ObjectId(req.user._id);
 
+  let { page = 1, limit = 10 } = req.query;
   page = Number(page);
   limit = Number(limit);
 
@@ -599,7 +601,7 @@ const getFeedTweets = asyncHandler(async (req, res) => {
   const totalPages = Math.ceil(totalTweets / limit);
 
   return res.status(200).json(
-    new ApiResponse(200, "Feed tweets retrieved successfully", {
+    new apiresponse(200, "Feed tweets retrieved successfully", {
       tweets,
 
       pagination: {
@@ -655,7 +657,7 @@ const updateTweet = asyncHandler(async (req, res) => {
       },
     },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );
@@ -664,7 +666,7 @@ const updateTweet = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, "Tweet updated successfully", updatedTweet));
+    .json(new apiresponse(200, "Tweet updated successfully", updatedTweet));
 });
 const deleteTweet = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
@@ -712,7 +714,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .json(new ApiResponse(200, "Tweet deleted successfully", null));
+      .json(new apiresponse(200, "Tweet deleted successfully", null));
   } catch (error) {
     await session.abortTransaction();
 

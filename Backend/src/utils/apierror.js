@@ -1,5 +1,4 @@
-class apierror extends Error
-{
+class apierror extends Error {
 
     constructor(
         statuscode,
@@ -9,6 +8,7 @@ class apierror extends Error
     )
     {
         super(message);
+        this.statusCode=statuscode;
         this.Statuscode=statuscode;
         this.data=null;
         this.message=message;

@@ -11,17 +11,11 @@ const likeRouter=Router();
 likeRouter.use(verifyJWT);
 
 likeRouter.post(
-    "/likes/tweet/:tweetId",
-    toggleTweetLike
-);
-
-likeRouter.post(
-    "/likes/comment/:commentId",
-    toggleCommentLike
-);
-
-likeRouter.post(
-    "/likes/video/:videoId",
+    "/video/:videoId",
     toggleVideoLike
 );
+
+likeRouter.post("/tweet/:tweetId", toggleTweetLike);
+
+likeRouter.post("/comment/:commentId", toggleCommentLike);
 export default likeRouter;

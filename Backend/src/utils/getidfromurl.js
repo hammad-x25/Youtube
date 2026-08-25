@@ -1,9 +1,11 @@
-import {apierror} from "../utils/ApiError.js";
+import { apierror } from "./apierror.js";
 
 export const getPublicIdFromUrl = (url) => {
     if (!url) {
-        throw new ApiError(400, "URL is required");
+        throw new apierror(400, "URL is required");
     }
 
-    return url.split("/").pop().split(".")[0];
+    const cleanUrl = url.split("?")[0].split("#")[0];
+    const fileName = cleanUrl.split("/").pop();
+    return fileName.includes(".") ? fileName.slice(0, fileName.lastIndexOf(".")) : fileName;
 };

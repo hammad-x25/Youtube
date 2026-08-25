@@ -20,14 +20,6 @@ owner:{
 commentSchema.index({
     Videos: 1
 });
-commentSchema.index(
-    {
-        owner: 1,
-        Videos: 1
-    },
-    {
-        unique: true
-    }
-);
+commentSchema.index({ owner: 1, Videos: 1, createdAt: -1 });
 
 export const Comments=mongoose.model("Comments",commentSchema);

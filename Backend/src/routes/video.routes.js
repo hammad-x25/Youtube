@@ -9,10 +9,11 @@ import {
     togglePublishStatus,
     getWatchVideo,
     getVideoComments,
-    addToWatchHistory
+    addToWatchHistory,
+    recordVideoView
 } from "../controllers/video.controller.js";
 
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { verifyJWT, optionalJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 const videoRouter = Router();
@@ -20,7 +21,7 @@ const videoRouter = Router();
 
 videoRouter.get("/", getAllVideos);
 
-videoRouter.get("/:videoId", getVideoById);
+videoRouter.get("/:videoId", optionalJWT, getVideoById);
 
 
 videoRouter.get(
@@ -62,7 +63,19 @@ videoRouter.post(
 videoRouter.patch(
     "/:videoId",
     verifyJWT,
+    upload.fields([
+        {
+            name: "Thumbnail",
+            maxCount: 1
+        }
+    ]),
     updateVideo
+);
+
+videoRouter.post(
+    "/:videoId/view",
+    optionalJWT,
+    recordVideoView
 );
 
 videoRouter.delete(

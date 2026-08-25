@@ -8,7 +8,8 @@ import {
   updatepassword,
   updateprofile,
   getuseraccountdetails,
-  getwatchhistory
+  getwatchhistory,
+  getLikedVideos
 } from "../controllers/user.controller.js";
 
 import { updateavatar, updatecover } from "../controllers/deleteold.controller.js";
@@ -39,7 +40,8 @@ Userrouter.route("/updatepasswrd").patch(verifyJWT,updatepassword);
 Userrouter.route("/updateavatar").patch(verifyJWT,upload.single("avatar"),updateavatar);
 Userrouter.route("/updatecover").patch(verifyJWT,upload.single("coverImage"),updatecover);
 Userrouter.route("/getuser").get(verifyJWT,getcurrentuser);
-Userrouter.route("/getaccountdetails/c:username").get(getuseraccountdetails);
+Userrouter.route("/getaccountdetails/:username").get(getuseraccountdetails);
 Userrouter.route("/getwatchhistory").get(verifyJWT,getwatchhistory);
+Userrouter.route("/liked-videos").get(verifyJWT, getLikedVideos);
 
 export { Userrouter };
