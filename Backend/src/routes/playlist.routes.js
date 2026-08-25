@@ -13,7 +13,7 @@ import {
 
 const playlistRouter = Router();
 
-playlistplaylistRouter.post("/", verifyJWT, createPlaylist);
+playlistRouter.post("/", verifyJWT, createPlaylist);
 
 playlistRouter.post("/:playlistId/videos/:videoId", verifyJWT, addVideoToPlaylist);
 playlistRouter.delete(

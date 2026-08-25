@@ -3,7 +3,7 @@ import { apierror } from "../utils/apierror.js";
 import { Video } from "../models/video.models.js";
 import { Comments } from "../models/comment.models.js";
 import { Likes } from "../models/like.models.js";
-import Tweets from "../models/tweets.models.js";
+import {Tweets} from "../models/tweets.models.js";
 import { apiresponse } from "../utils/apiresponse.js";
 import mongoose from "mongoose";
 
