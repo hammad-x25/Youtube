@@ -39,15 +39,15 @@ const getTweetById = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
 
   if (!tweetId) {
-    throw new ApiError(400, "Tweet ID is required");
+    throw new apierror(400, "Tweet ID is required");
   }
 
   if (!mongoose.Types.ObjectId.isValid(tweetId)) {
-    throw new ApiError(400, "Invalid tweet ID");
+    throw new apierror(400, "Invalid tweet ID");
   }
 
   if (!req.user?._id) {
-    throw new ApiError(401, "Unauthorized request");
+    throw new apierror(401, "Unauthorized request");
   }
 
   const userId = new mongoose.Types.ObjectId(req.user._id);
@@ -163,7 +163,7 @@ const getTweetById = asyncHandler(async (req, res) => {
     },
   ]);
   if (!tweet.length) {
-    throw new ApiError(404, "Tweet not found");
+    throw new apierror(404, "Tweet not found");
   }
 
   return res
@@ -174,15 +174,15 @@ const getUserTweets = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
   if (!userId) {
-    throw new ApiError(400, "User ID is required");
+    throw new apierror(400, "User ID is required");
   }
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new ApiError(400, "Invalid user ID");
+    throw new apierror(400, "Invalid user ID");
   }
 
   if (!req.user?._id) {
-    throw new ApiError(401, "Unauthorized request");
+    throw new apierror(401, "Unauthorized request");
   }
 
   const targetUserId = new mongoose.Types.ObjectId(userId);
@@ -194,11 +194,11 @@ const getUserTweets = asyncHandler(async (req, res) => {
   limit = Number(limit);
 
   if (!Number.isInteger(page) || page < 1) {
-    throw new ApiError(400, "Page must be a positive integer");
+    throw new apierror(400, "Page must be a positive integer");
   }
 
   if (!Number.isInteger(limit) || limit < 1) {
-    throw new ApiError(400, "Limit must be a positive integer");
+    throw new apierror(400, "Limit must be a positive integer");
   }
 
   if (limit > 50) {
@@ -366,7 +366,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
 
 const getFeedTweets = asyncHandler(async (req, res) => {
   if (!req.user?._id) {
-    throw new ApiError(401, "Unauthorized request");
+    throw new apierror(401, "Unauthorized request");
   }
 
   const currentUserId = new mongoose.Types.ObjectId(req.user._id);
@@ -375,11 +375,11 @@ const getFeedTweets = asyncHandler(async (req, res) => {
   limit = Number(limit);
 
   if (!Number.isInteger(page) || page < 1) {
-    throw new ApiError(400, "Page must be a positive integer");
+    throw new apierror(400, "Page must be a positive integer");
   }
 
   if (!Number.isInteger(limit) || limit < 1) {
-    throw new ApiError(400, "Limit must be a positive integer");
+    throw new apierror(400, "Limit must be a positive integer");
   }
 
   limit = Math.min(limit, 50);
@@ -619,29 +619,29 @@ const updateTweet = asyncHandler(async (req, res) => {
   const { content } = req.body;
 
   if (!tweetId) {
-    throw new ApiError(400, "Tweet ID is required");
+    throw new apierror(400, "Tweet ID is required");
   }
 
   if (!mongoose.Types.ObjectId.isValid(tweetId)) {
-    throw new ApiError(400, "Invalid tweet ID");
+    throw new apierror(400, "Invalid tweet ID");
   }
 
   if (!req.user?._id) {
-    throw new ApiError(401, "Unauthorized request");
+    throw new apierror(401, "Unauthorized request");
   }
 
   if (content === undefined) {
-    throw new ApiError(400, "Tweet content is required");
+    throw new apierror(400, "Tweet content is required");
   }
 
   if (typeof content !== "string") {
-    throw new ApiError(400, "Tweet content must be a string");
+    throw new apierror(400, "Tweet content must be a string");
   }
 
   const trimmedContent = content.trim();
 
   if (trimmedContent === "") {
-    throw new ApiError(400, "Tweet content cannot be empty");
+    throw new apierror(400, "Tweet content cannot be empty");
   }
 
   const updatedTweet = await Tweets.findOneAndUpdate(
@@ -660,7 +660,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     },
   );
   if (!updatedTweet) {
-    throw new ApiError(404, "Tweet not found");
+    throw new apierror(404, "Tweet not found");
   }
   return res
     .status(200)
@@ -670,15 +670,15 @@ const deleteTweet = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
 
   if (!tweetId) {
-    throw new ApiError(400, "Tweet ID is required");
+    throw new apierror(400, "Tweet ID is required");
   }
 
   if (!mongoose.Types.ObjectId.isValid(tweetId)) {
-    throw new ApiError(400, "Invalid tweet ID");
+    throw new apierror(400, "Invalid tweet ID");
   }
 
   if (!req.user?._id) {
-    throw new ApiError(401, "Unauthorized request");
+    throw new apierror(401, "Unauthorized request");
   }
 
   const tweetObjectId = new mongoose.Types.ObjectId(tweetId);
@@ -696,7 +696,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
     }).session(session);
 
     if (!tweet) {
-      throw new ApiError(404, "Tweet not found");
+      throw new apierror(404, "Tweet not found");
     }
 
     await Tweets.deleteOne({
