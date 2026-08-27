@@ -16,7 +16,7 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
 
-const configuredOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
+const configuredOrigins = (process.env.CORS_ORIGIN || "http://localhost")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
